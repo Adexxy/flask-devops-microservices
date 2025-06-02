@@ -1,0 +1,85 @@
+# === General OS and Editor Files ===
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.bak
+
+# === Python ===
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+ENV/
+.Python
+
+# === Node/JS (if any frontend uses it) ===
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# === Flutter/Dart (for Flutter frontend) ===
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+*.dart_tool/
+*.lock
+
+# === Terraform ===
+.terraform/
+*.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+tfplan
+*.tfplan
+terraform.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+*.auto.tfvars
+
+# === Local sensitive Terraform files ===
+*.pem
+*.key
+*.crt
+.secrets/
+
+# === Bootstrap artifacts (if any) ===
+bootstrap/.terraform/
+bootstrap/*.tfstate
+bootstrap/*.tfstate.*
+bootstrap/*.tfplan
+
+# === Logs ===
+*.log
+
+# === Output/Build Artifacts ===
+dist/
+out/
+coverage/
+htmlcov/
+
+# === Environment and Secrets ===
+.env
+.env.*
+.envrc
+
+# === Miscellaneous ===
+lab1.md
+
+# === Ignore test and coverage artifacts ===
+*.cover
+*.coverage
+coverage.xml
+nosetests.xml
+test-results/
+test-output/

@@ -1,0 +1,4 @@
+image:
+  tag: "prod-release-123"
+env:
+  ENV_VAR: "prod-value"
