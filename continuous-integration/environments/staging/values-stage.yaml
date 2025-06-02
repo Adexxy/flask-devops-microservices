@@ -1,4 +1,0 @@
-image:
-  tag: "stage-release-123"
-env:
-  ENV_VAR: "stage-value"

@@ -1,0 +1,253 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Python/Flask Microservices
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: 
+  # This is for manual triggering of the workflow with inputs on the GitHub UI
+      inputs:
+        target:
+          description: "Choose deployment target"
+          required: true
+          default: "eks"
+          type: choice
+          options:
+            - generic
+            - eks
+            - ecs
+        registry:
+          description: "Push to which registry?"
+          required: true
+          default: "ecr"
+          type: choice
+          options:
+            - dockerhub
+            - ecr
+
+env:
+  IMAGE_PREFIX: ${{ secrets.DOCKER_USERNAME }}
+  IMAGE_TAG: ${{ github.sha }}
+  HELM_RELEASE: microservices-app
+  HELM_NAMESPACE: microservises
+  PYTHONPATH: ${{ github.workspace }}
+  TARGET: ${{ github.event.inputs.target || 'eks' }}  # Default to 'eks' if not specified for on-push or pull_request
+  REGISTRY: ${{ github.event.inputs.registry || 'ecr' }}  # Default to 'ecr' if not specified for on-push or pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  static_code_analysis:
+    name: Run Static Code Analysis
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        service: [user_service, product_service, notification_service, order_service]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Lint with flake8
+        working-directory: ./services/${{ matrix.service }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest   
+
+    env:
+      DATABASE_URL: "sqlite:///:memory:"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: List directory for debugging
+        run: ls -R
+
+      - name: Run test with pytest
+        run: |
+          if [ -d tests ]; then
+            pytest tests
+          else
+            echo "No tests to run"
+          fi
+
+  build_and_smoke_test:
+    name: Build, Smoke Test and Push Docker Images
+    needs: test
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        service: [user_service, product_service, notification_service, order_service]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        run: docker buildx create --use
+
+
+      ##############################
+      # DockerHub Login
+      ##############################    
+
+      - name: Log in to Docker Hub
+        if: env.REGISTRY == 'dockerhub'
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+
+      ##############################
+      # AWS ECR Login
+      ##############################
+      - name: Configure AWS credentials
+        if: env.REGISTRY == 'ecr'
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        if: env.REGISTRY == 'ecr'
+        run: |
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
+          docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+
+      ##############################
+      # Tag Setup
+      ##############################
+      - name: Set image repo
+        id: vars
+        run: |
+          if [[ "$REGISTRY" == "ecr" ]]; then
+            echo "repo=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ matrix.service }}" >> $GITHUB_OUTPUT
+          else
+            echo "repo=${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}" >> $GITHUB_OUTPUT
+          fi
+
+
+      ##############################
+      # Build, Smoke_test and Push
+      ##############################
+      - name: Build
+        run: |
+          SERVICE_DIR="./services/${{ matrix.service }}"
+          docker build -t ${{ steps.vars.outputs.repo }}:${{ env.IMAGE_TAG }} $SERVICE_DIR
+
+      - name: Set service port
+        id: port
+        run: |
+          if [[ "${{ matrix.service }}" == "user_service" ]]; then
+            echo "PORT=5001" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.service }}" == "product_service" ]]; then
+            echo "PORT=5002" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.service }}" == "order_service" ]]; then
+            echo "PORT=5003" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.service }}" == "notification_service" ]]; then
+            echo "PORT=5004" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run container
+        run: |
+          docker run -d --name test_${{ matrix.service }} -p ${{ steps.port.outputs.PORT }}:${{ steps.port.outputs.PORT }} ${{ steps.vars.outputs.repo }}:${{ env.IMAGE_TAG }}
+          sleep 5
+
+      - name: Check /health endpoint
+        run: curl --fail http://localhost:${{ steps.port.outputs.PORT }}/health
+
+      - name: Debug container logs on failure
+        if: failure()
+        run: docker logs test_${{ matrix.service }}
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f test_${{ matrix.service }} || true
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ steps.vars.outputs.repo }}:${{ env.IMAGE_TAG }}
+
+
+  integration-test:
+    needs: build_and_smoke_test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
+          docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+      
+      - name: Create network
+        run: docker network create microservices-net
+
+      - name: Run all containers
+        run: |
+          docker run -d --name user_service --network microservices-net -p 5001:5001 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/user_service:${{ env.IMAGE_TAG }}
+          docker run -d --name product_service --network microservices-net -p 5002:5002 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/product_service:${{ env.IMAGE_TAG }}
+          docker run -d --name order_service --network microservices-net -p 5003:5003 -e DATABASE_URL=sqlite:///:memory: -e PRODUCT_SERVICE_URL=http://product_service:5002 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/order_service:${{ env.IMAGE_TAG }}
+          docker run -d --name notification_service --network microservices-net -p 5004:5004 -e ORDER_SERVICE_URL=http://order_service:5003 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/notification_service:${{ env.IMAGE_TAG }}
+          sleep 10  # allow all to boot
+
+      - name: Run integration tests
+        run: |
+          curl --fail -X POST http://localhost:5001/users -H "Content-Type: application/json" -d '{"name": "TestUser"}'
+          curl --fail -X POST http://localhost:5002/products -H "Content-Type: application/json" -d '{"name": "TestProduct", "price": 10.0}'
+          curl --fail -X POST http://localhost:5003/orders -H "Content-Type: application/json" -d '{"product_id": 1, "quantity": 1}'
+          curl --fail -X POST http://localhost:5004/notify -H "Content-Type: application/json" -d '{"order_id": 1}'
+
+      - name: Show order_service logs
+        if: failure()
+        run: docker logs order_service
+
+      - name: Show notification_service logs
+        if: failure()
+        run: docker logs notification_service
+
+      - name: Show user_service logs
+        if: failure()
+        run: docker logs user_service
+
+      - name: Show product_service logs
+        if: failure()
+        run: docker logs product_service
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f user_service product_service order_service notification_service || true
