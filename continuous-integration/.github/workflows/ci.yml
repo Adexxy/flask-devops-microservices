@@ -1,12 +1,16 @@
 # This workflow will install Python dependencies, run tests and lint with a single version of Python
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: Python/Flask Microservices
+name: Python/Flask Microservices Continuous Integration
 
 on:
   push:
+    paths:
+      - 'continuous-integration/**'
     branches: [ "main" ]
   pull_request:
+    paths:
+      - 'continuous-integration/**'
     branches: [ "main" ]
   workflow_dispatch: 
   # This is for manual triggering of the workflow with inputs on the GitHub UI
