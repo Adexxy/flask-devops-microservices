@@ -64,7 +64,7 @@ jobs:
           python-version: '3.11'
 
       - name: Lint with flake8
-        working-directory: ./services/${{ matrix.service }}
+        working-directory: ./continuous-integration/services/${{ matrix.service }}
         run: |
           python -m pip install --upgrade pip
           pip install flake8
@@ -90,13 +90,14 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r continuous-integration/requirements.txt
           pip install pytest
 
       - name: List directory for debugging
-        run: ls -R
+        run: ls -R continuous-integration
 
       - name: Run test with pytest
+        working-directory: ./continuous-integration
         run: |
           if [ -d tests ]; then
             pytest tests
@@ -165,7 +166,7 @@ jobs:
       ##############################
       - name: Build
         run: |
-          SERVICE_DIR="./services/${{ matrix.service }}"
+          SERVICE_DIR="./continuous-integration/services/${{ matrix.service }}"
           docker build -t ${{ steps.vars.outputs.repo }}:${{ env.IMAGE_TAG }} $SERVICE_DIR
 
       - name: Set service port
@@ -223,11 +224,11 @@ jobs:
 
       - name: Run all containers
         run: |
-          docker run -d --name user_service --network microservices-net -p 5001:5001 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/user_service:${{ env.IMAGE_TAG }}
-          docker run -d --name product_service --network microservices-net -p 5002:5002 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/product_service:${{ env.IMAGE_TAG }}
-          docker run -d --name order_service --network microservices-net -p 5003:5003 -e DATABASE_URL=sqlite:///:memory: -e PRODUCT_SERVICE_URL=http://product_service:5002 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/order_service:${{ env.IMAGE_TAG }}
-          docker run -d --name notification_service --network microservices-net -p 5004:5004 -e ORDER_SERVICE_URL=http://order_service:5003 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/notification_service:${{ env.IMAGE_TAG }}
-          sleep 10  # allow all to boot
+            docker run -d --name user_service --network microservices-net -p 5001:5001 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/user_service:${{ env.IMAGE_TAG }}
+            docker run -d --name product_service --network microservices-net -p 5002:5002 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/product_service:${{ env.IMAGE_TAG }}
+            docker run -d --name order_service --network microservices-net -p 5003:5003 -e DATABASE_URL=sqlite:///:memory: -e PRODUCT_SERVICE_URL=http://product_service:5002 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/order_service:${{ env.IMAGE_TAG }}
+            docker run -d --name notification_service --network microservices-net -p 5004:5004 -e ORDER_SERVICE_URL=http://order_service:5003 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/notification_service:${{ env.IMAGE_TAG }}
+            sleep 10  # allow all to boot
 
       - name: Run integration tests
         run: |
