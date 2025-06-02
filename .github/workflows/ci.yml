@@ -10,6 +10,25 @@ on:
       - 'continuous-integration/**'
     branches: [ "main" ]
   workflow_dispatch:
+    # This is for manual triggering of the workflow with inputs on the GitHub UI
+    inputs:
+      target:
+        description: "Choose deployment target"
+        required: true
+        default: "eks"
+        type: choice
+        options:
+          - generic
+          - eks
+          - ecs
+      registry:
+        description: "Push to which registry?"
+        required: true
+        default: "ecr"
+        type: choice
+        options:
+          - dockerhub
+          - ecr
 
 env:
   IMAGE_PREFIX: ${{ secrets.DOCKER_USERNAME }}
