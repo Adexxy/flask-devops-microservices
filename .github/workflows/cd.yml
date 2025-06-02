@@ -40,7 +40,7 @@ jobs:
       IMAGE_TAG: ${{ github.sha }}
       HELM_RELEASE: my-release
       HELM_NAMESPACE: flask-microservices
-      KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+      # KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
 
     steps:
       - name: Checkout code
@@ -100,6 +100,11 @@ jobs:
         if: env.TARGET == 'eks'
         run: |
           aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
+
+      - name: Debug kubeconfig
+        run: |
+          kubectl config get-contexts
+          kubectl get nodes
 
       - name: Deploy to EKS
         if: env.TARGET == 'eks'
