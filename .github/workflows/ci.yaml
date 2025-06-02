@@ -96,10 +96,12 @@ jobs:
       - name: List directory for debugging
         run: ls -R continuous-integration
 
+      - name: Set PYTHONPATH
+        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)/continuous-integration" >> $GITHUB_ENV
+
       - name: Run test with pytest
         working-directory: ./continuous-integration
         run: |
-            PYTHONPATH=$PYTHONPATH:$(pwd) pytest tests
             if [ -d tests ]; then
                 pytest tests
             else
