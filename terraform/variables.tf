@@ -97,3 +97,22 @@ variable "ecr_service_names" {
   description = "List of service names for ECR repositories"
   type        = list(string)
 }
+
+variable "account_id" {
+  description = "The AWS account ID"
+  type        = string
+}
+
+variable "github_org" {
+  description = "The GitHub organization name"
+  type        = string
+}
+
+variable "repo_name" {
+  description = "The name of the GitHub repository"
+  type        = string
+}
+
+variable "github_branch" {
+  default = "main"
+}

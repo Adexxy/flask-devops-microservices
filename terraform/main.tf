@@ -17,6 +17,11 @@ module "vpc" {
 module "iam" {
   source      = "./modules/iam"
   environment = var.environment
+  account_id  = var.account_id
+  cluster_name = var.eks_cluster_name
+  github_org  = var.github_org
+  repo_name   = var.repo_name
+  github_branch = var.github_branch
 }
 
 module "eks" {

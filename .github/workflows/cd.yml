@@ -106,6 +106,7 @@ jobs:
 
       - name: Debug kubeconfig
         run: |
+          kubectl config current-context
           kubectl config get-contexts
           kubectl get nodes
 
