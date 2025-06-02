@@ -25,7 +25,7 @@ on:
         description: "Push to which registry?"
         required: true
         default: "ecr"
-        type: choice
+        type: choice 
         options:
           - dockerhub
           - ecr
