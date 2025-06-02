@@ -99,11 +99,12 @@ jobs:
       - name: Run test with pytest
         working-directory: ./continuous-integration
         run: |
-          if [ -d tests ]; then
-            pytest tests
-          else
-            echo "No tests to run"
-          fi
+            PYTHONPATH=$PYTHONPATH:$(pwd) pytest tests
+            if [ -d tests ]; then
+                pytest tests
+            else
+                echo "No tests to run"
+            fi
 
   build_and_smoke_test:
     name: Build, Smoke Test and Push Docker Images
