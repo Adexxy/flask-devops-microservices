@@ -71,7 +71,7 @@ jobs:
         if: env.TARGET == 'generic'
         run: |
           helm upgrade --install $HELM_RELEASE \
-            ./helm-charts/microservices \
+            ./continuous-deployment/helm-charts/microservices \
             --namespace $HELM_NAMESPACE \
             --create-namespace \
             --set image.tag=${{ env.IMAGE_TAG }} \
@@ -124,7 +124,7 @@ jobs:
       # ECS Deployment
       ########################################
 
-      - name: Update ECS services
+        - name: Update ECS services
         if: env.TARGET == 'ecs'
         run: |
           IFS=',' read -ra SERVICES <<< "${{ secrets.ECS_SERVICE_NAMES }}"
@@ -132,7 +132,7 @@ jobs:
             aws ecs update-service \
               --cluster ${{ secrets.ECS_CLUSTER_NAME }} \
               --service "$svc" \
-              --force-new-deployment
+              --force-new-deployment \
               --desired-count 1 \
               --deployment-configuration maximumPercent=200,minimumHealthyPercent=100
           done
