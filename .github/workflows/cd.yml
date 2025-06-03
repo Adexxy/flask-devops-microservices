@@ -1,6 +1,14 @@
 name: Deploy to Cloud
 
 on:
+  push:
+    paths:
+      - 'continuous-deployment/**'
+    branches: [ "main" ]
+  pull_request:
+    paths:
+      - 'continuous-deployment/**'
+    branches: [ "main" ]
   workflow_dispatch:
   # This is for manual triggering of the workflow with inputs on the GitHub UI
     inputs:
