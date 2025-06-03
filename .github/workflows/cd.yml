@@ -124,7 +124,7 @@ jobs:
       # ECS Deployment
       ########################################
 
-        - name: Update ECS services
+      - name: Update ECS services
         if: env.TARGET == 'ecs'
         run: |
           IFS=',' read -ra SERVICES <<< "${{ secrets.ECS_SERVICE_NAMES }}"
