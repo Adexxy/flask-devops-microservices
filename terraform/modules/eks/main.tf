@@ -1,4 +1,7 @@
 # Module: `modules/eks/main.tf`
+
+data "aws_caller_identity" "current" {}
+
 resource "aws_eks_cluster" "microservices_cluster" {
   name = var.cluster_name
 
@@ -12,10 +15,6 @@ resource "aws_eks_cluster" "microservices_cluster" {
   vpc_config {
     subnet_ids = var.private_subnets
   }
-
-  # Ensure that IAM Role permissions are created before and deleted
-  # after EKS Cluster handling. Otherwise, EKS will not be able to
-  # properly delete EKS managed EC2 infrastructure such as Security Groups.
 
   depends_on = [
     aws_iam_role_policy_attachment.cluster_AmazonEKSClusterPolicy,
@@ -51,6 +50,20 @@ resource "aws_iam_role_policy_attachment" "cluster_AmazonEKSClusterPolicy" {
   role       = aws_iam_role.cluster.name
 }
 
+# resource "kubernetes_config_map" "aws_auth" {
+#   depends_on = [aws_eks_cluster.microservices_cluster]
+
+#   metadata {
+#     name      = "aws-auth"
+#     namespace = "kube-system"
+#   }
+
+#   data = {
+#     mapUsers = yamlencode(var.map_users)
+#     mapRoles = yamlencode(var.map_roles)
+#   }
+# }
+
 resource "kubernetes_config_map" "aws_auth" {
   depends_on = [aws_eks_cluster.microservices_cluster]
 
@@ -60,7 +73,19 @@ resource "kubernetes_config_map" "aws_auth" {
   }
 
   data = {
-    mapUsers = yamlencode(var.map_users)
+    # 1) map the “creator IAM principal” as bootstrap admin:
+    mapUsers = yamlencode(
+      [
+        {
+          userarn  = data.aws_caller_identity.current.arn
+          username = "cluster-bootstrap"
+          groups   = ["system:masters"]
+        }
+      ]
+      # 2) then append any additional map_users passed in
+    )
+
+    # 3) map node‐group role(s) so EC2 nodes can join
     mapRoles = yamlencode(var.map_roles)
   }
 }

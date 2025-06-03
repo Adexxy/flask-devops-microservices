@@ -117,6 +117,8 @@ jobs:
           kubectl config current-context
           kubectl config get-contexts
           kubectl get nodes
+          kubectl get configmap aws-auth -n kube-system -o yaml
+
 
       - name: Deploy to EKS
         if: env.TARGET == 'eks'

@@ -1,13 +1,5 @@
 # Root main.tf to pull all modules together
 
-data "aws_eks_cluster" "cluster" {
-  name = module.eks.cluster_name
-}
-
-data "aws_eks_cluster_auth" "cluster" {
-  name = module.eks.cluster_name
-}
-
 module "vpc" {
   source                = "./modules/vpc"
   name                  = var.vpc_name
@@ -94,4 +86,8 @@ module "node_group" {
   environment       = var.environment
 
   # depends_on = [module.eks]
+}
+
+data "aws_eks_cluster_auth" "cluster" {
+  name = module.eks.cluster_name
 }

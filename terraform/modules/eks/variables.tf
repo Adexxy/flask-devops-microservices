@@ -33,11 +33,21 @@ variable "environment" {
   type        = string
 }
 
+# variable "map_users" {
+#   description = "List of IAM users to add to aws-auth configmap"
+#   type        = list(any)
+#   default     = []
+# }
+
 variable "map_users" {
-  description = "List of IAM users to add to aws-auth configmap"
-  type        = list(any)
-  default     = []
+  type = list(object({
+    userarn  = string
+    username = string
+    groups   = list(string)
+  }))
+  default = []
 }
+
 
 variable "map_roles" {
   description = "List of IAM roles to add to aws-auth configmap"
