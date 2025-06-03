@@ -128,8 +128,8 @@ jobs:
             ./continuous-deployment/helm-charts/microservices \
             --namespace $HELM_NAMESPACE \
             --create-namespace \
-            --set image.repository=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com \
-            --set image.tag=${{ env.IMAGE_TAG }} \ 
+            --set image.repository $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com \
+            --set image.tag ${{ env.IMAGE_TAG }} \ 
             --wait
 
       ########################################
