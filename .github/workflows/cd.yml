@@ -45,7 +45,7 @@ jobs:
       EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
       ECS_SERVICE_NAMES: ${{ secrets.ECS_SERVICE_NAMES }}
       ECS_CLUSTER_NAME: ${{ secrets.ECS_CLUSTER_NAME }}
-      IMAGE_TAG: ${{ github.sha }}
+      IMAGE_TAG: 9928458ec0f2a37c4d12214ac201e7285257ce01   # ${{ github.sha }}
       HELM_RELEASE: my-release
       HELM_NAMESPACE: flask-microservices
       # KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
@@ -129,7 +129,7 @@ jobs:
             --namespace $HELM_NAMESPACE \
             --create-namespace \
             --set image.repository=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com \
-            --set image.tag=${{ env.IMAGE_TAG }} \ # 9928458ec0f2a37c4d12214ac201e7285257ce01 
+            --set image.tag=${{ env.IMAGE_TAG }} \ 
             --wait
 
       ########################################
