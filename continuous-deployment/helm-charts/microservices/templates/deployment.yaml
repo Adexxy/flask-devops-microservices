@@ -14,11 +14,11 @@ spec:
         app: {{ $name }}
     spec:
       containers:
-        - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        - name: {{ $.Chart.Name }}
+          image: "{{ $svc.image }}"
           env:
             - name: ENV_VAR
-              value: "{{ .Values.env.ENV_VAR }}"
+              value: "{{ $.Values.env.ENV_VAR }}"
           ports:
             - containerPort: {{ $svc.port }}
           {{- if $svc.resources }}
