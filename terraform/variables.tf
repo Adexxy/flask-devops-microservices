@@ -48,11 +48,6 @@ variable "environment" {
   type        = string
 }
 
-variable "eks_cluster_name" {
-  description = "The name of the EKS cluster"
-  type        = string
-}
-
 variable "s3_bucket_name" {
   description = "The name of the S3 bucket"
   type        = string
@@ -115,4 +110,12 @@ variable "repo_name" {
 
 variable "github_branch" {
   default = "main"
+}
+
+variable "aws_user" {
+  description = "aws user"
+}
+
+variable "aws_user_id" {
+  description = "aws user id"
 }

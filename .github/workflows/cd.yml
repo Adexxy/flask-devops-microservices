@@ -114,7 +114,7 @@ jobs:
         if: env.TARGET == 'eks'
         run: |
           helm upgrade --install $HELM_RELEASE \
-            ./helm-charts/microservices \
+            ./continuous-deployment/helm-charts/microservices \
             --namespace $HELM_NAMESPACE \
             --create-namespace \
             --set image.tag=${{ env.IMAGE_TAG }} \

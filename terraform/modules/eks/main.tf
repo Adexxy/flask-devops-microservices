@@ -1,3 +1,4 @@
+# Module: `modules/eks/main.tf`
 resource "aws_eks_cluster" "microservices_cluster" {
   name = var.cluster_name
 
@@ -50,3 +51,16 @@ resource "aws_iam_role_policy_attachment" "cluster_AmazonEKSClusterPolicy" {
   role       = aws_iam_role.cluster.name
 }
 
+resource "kubernetes_config_map" "aws_auth" {
+  depends_on = [aws_eks_cluster.microservices_cluster]
+
+  metadata {
+    name      = "aws-auth"
+    namespace = "kube-system"
+  }
+
+  data = {
+    mapUsers = yamlencode(var.map_users)
+    mapRoles = yamlencode(var.map_roles)
+  }
+}

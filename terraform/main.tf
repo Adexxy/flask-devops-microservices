@@ -1,5 +1,13 @@
 # Root main.tf to pull all modules together
 
+data "aws_eks_cluster" "cluster" {
+  name = module.eks.cluster_name
+}
+
+data "aws_eks_cluster_auth" "cluster" {
+  name = module.eks.cluster_name
+}
+
 module "vpc" {
   source                = "./modules/vpc"
   name                  = var.vpc_name
@@ -18,8 +26,8 @@ module "iam" {
   source      = "./modules/iam"
   environment = var.environment
   account_id  = var.account_id
-  cluster_name = var.eks_cluster_name
   github_org  = var.github_org
+  cluster_name = var.cluster_name
   repo_name   = var.repo_name
   github_branch = var.github_branch
 }
@@ -28,10 +36,28 @@ module "eks" {
   source         = "./modules/eks"
   subnet_ids     = module.vpc.private_subnet_ids
   vpc_id         = module.vpc.vpc_id
-  cluster_name   = var.eks_cluster_name
+  cluster_name   = var.cluster_name
   azs            = var.azs
   private_subnets = module.vpc.private_subnet_ids 
   environment    = var.environment 
+
+  map_users = [
+    {
+      userarn = "arn:aws:iam::${var.aws_user_id}:user/${var.aws_user}"
+      username = "github-actions"
+      groups   = ["system:masters"]
+    }
+  ]
+  map_roles = [
+    {
+      rolearn  = module.iam.eks_node_group_role_arn
+      username = "system:node:{{EC2PrivateDNSName}}"
+      groups   = [
+        "system:bootstrappers",
+        "system:nodes"
+      ]
+    }
+  ]
 }
 
 module "rds" {
@@ -57,7 +83,7 @@ module "ecr" {
 
 module "node_group" {
   source            = "./modules/node_group"
-  cluster_name      = var.eks_cluster_name
+  cluster_name      = var.cluster_name
   node_group_name   = "${var.environment}-node-group"
   subnet_ids        = module.vpc.private_subnet_ids
   node_role_arn     = module.iam.eks_node_group_role_arn
@@ -67,5 +93,5 @@ module "node_group" {
   max_size          = 3
   environment       = var.environment
 
-  depends_on = [module.eks]
+  # depends_on = [module.eks]
 }
