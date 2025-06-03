@@ -124,13 +124,24 @@ jobs:
       - name: Deploy to EKS
         if: env.TARGET == 'eks'
         run: |
-          helm upgrade --install $HELM_RELEASE \
+          IMAGE_REPO="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+          echo "Deploying $HELM_RELEASE with image: $IMAGE_REPO:$IMAGE_TAG"         
+          helm upgrade --install "$HELM_RELEASE" \
             ./continuous-deployment/helm-charts/microservices \
-            --namespace $HELM_NAMESPACE \
+            --namespace "$HELM_NAMESPACE" \
             --create-namespace \
-            --set image.repository $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com \
-            --set image.tag ${{ env.IMAGE_TAG }} \ 
+            --set image.repository="$IMAGE_REPO" \
+            --set image.tag="$IMAGE_TAG" \
             --wait
+
+        # run: |
+        #   helm upgrade --install $HELM_RELEASE \
+        #     ./continuous-deployment/helm-charts/microservices \
+        #     --namespace $HELM_NAMESPACE \
+        #     --create-namespace \
+        #     --set image.repository=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com \
+        #     --set image.tag=${{ env.IMAGE_TAG }} \ 
+        #     --wait
 
       ########################################
       # ECS Deployment
