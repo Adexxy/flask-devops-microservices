@@ -49,6 +49,7 @@ jobs:
       HELM_RELEASE: my-release
       HELM_NAMESPACE: flask-microservices
       # KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
 
     steps:
       - name: Checkout code
@@ -127,7 +128,8 @@ jobs:
             ./continuous-deployment/helm-charts/microservices \
             --namespace $HELM_NAMESPACE \
             --create-namespace \
-            --set image.tag=${{ env.IMAGE_TAG }} \
+            --set image.repository=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com \
+            --set image.tag=${{ env.IMAGE_TAG }} \ # 9928458ec0f2a37c4d12214ac201e7285257ce01 
             --wait
 
       ########################################
