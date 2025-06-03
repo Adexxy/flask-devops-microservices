@@ -132,16 +132,12 @@ jobs:
             --create-namespace \
             --set image.repository="$IMAGE_REPO" \
             --set image.tag="$IMAGE_TAG" \
-            --wait
 
-        # run: |
-        #   helm upgrade --install $HELM_RELEASE \
-        #     ./continuous-deployment/helm-charts/microservices \
-        #     --namespace $HELM_NAMESPACE \
-        #     --create-namespace \
-        #     --set image.repository=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com \
-        #     --set image.tag=${{ env.IMAGE_TAG }} \ 
-        #     --wait
+      - name: Confirm EKS deployment
+        if: env.TARGET == 'eks'
+        run: |
+          kubectl get pods -n "$HELM_NAMESPACE"
+          kubectl get events -n "$HELM_NAMESPACE" --sort-by=.metadata.creationTimestamp
 
       ########################################
       # ECS Deployment
@@ -159,4 +155,6 @@ jobs:
               --desired-count 1 \
               --deployment-configuration maximumPercent=200,minimumHealthyPercent=100
           done
+
+
 
