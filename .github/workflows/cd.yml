@@ -156,5 +156,38 @@ jobs:
               --deployment-configuration maximumPercent=200,minimumHealthyPercent=100
           done
 
+      ########################################
+      # Install NGINX Ingress Controller (if not exists)
+      # This is only for EKS, as generic Kubernetes may not require it and ECS do not require this step
+      ########################################
+
+      # - name: Install NGINX Ingress Controller (if not exists)
+      #   if: env.TARGET == 'eks'
+      #   run: |
+      #     if ! kubectl get ns ingress-nginx &>/dev/null; then
+      #       echo "Installing ingress-nginx..."
+      #       helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+      #       helm repo update
+      #       helm upgrade --install nginx-ingress ingress-nginx/ingress-nginx \
+      #         --namespace ingress-nginx --create-namespace \
+      #         --set controller.publishService.enabled=true
+      #     else
+      #       echo "Ingress-nginx already installed."
+      #     fi
+
+      ########################################
+      # Get Ingress Controller External DNS
+      # This is only for EKS, as generic Kubernetes may not require it and ECS do not require this step
+      ########################################
+      
+      - name: Get Ingress Controller External DNS
+        if: env.TARGET == 'eks'
+        run: |
+          echo "Retrieving NGINX Ingress Controller external hostname..."
+          kubectl get svc -n ingress-nginx ingress-nginx-controller \
+            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+
+
+
 
 

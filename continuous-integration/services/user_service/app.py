@@ -20,6 +20,20 @@ class User(db.Model):
 with app.app_context():
     db.create_all()
 
+@app.route('/')
+def home():
+    return """
+    <html>
+      <head><title>User Service</title></head>
+      <body style="font-family:sans-serif;">
+        <h1>User Service is Running</h1>
+        <p>Status: ✅ Healthy</p>
+        <p>Use <code>/health</code> for a JSON health check.</p>
+        <p>Use <code>/users</code> endpoints to interact with the user API.</p>
+      </body>
+    </html>
+    """
+
 
 # Health check endpoint
 @app.route('/health', methods=['GET'])

@@ -1,5 +1,7 @@
 # Root main.tf to pull all modules together
 
+data "aws_caller_identity" "current" {}
+
 module "vpc" {
   source                = "./modules/vpc"
   name                  = var.vpc_name
@@ -85,9 +87,102 @@ module "node_group" {
   max_size          = 3
   environment       = var.environment
 
-  # depends_on = [module.eks]
+  depends_on = [kubernetes_config_map.aws_auth]
 }
 
-data "aws_eks_cluster_auth" "cluster" {
+# ————————————————————————————————
+# 1) Read the EKS cluster once module.eks is done
+# ————————————————————————————————
+data "aws_eks_cluster" "eks" {
+  name       = module.eks.cluster_name
+  depends_on = [module.eks]
+}
+
+data "aws_eks_cluster_auth" "eks" {
   name = module.eks.cluster_name
 }
+
+
+# # ————————————————————————————————
+# # 2) Configure the Kubernetes provider from the data source
+# # ————————————————————————————————
+provider "kubernetes" {
+  host                   = data.aws_eks_cluster.eks.endpoint
+  cluster_ca_certificate = base64decode(data.aws_eks_cluster.eks.certificate_authority[0].data)
+  token                  = data.aws_eks_cluster_auth.eks.token
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = data.aws_eks_cluster.eks.endpoint
+    cluster_ca_certificate = base64decode(
+      data.aws_eks_cluster.eks.certificate_authority[0].data
+    )
+    token = data.aws_eks_cluster_auth.eks.token
+  }
+}
+
+# ————————————————————————————————
+# 3) Only now that Kubernetes is configured, fetch the Ingress Service
+# ————————————————————————————————
+# data "kubernetes_service" "nginx_ingress_lb" {
+#   depends_on = [module.eks] # makes sure the cluster + helm release exist
+#   metadata {
+#     name      = "ingress-nginx-controller"
+#     namespace = "ingress-nginx"
+#   }
+# }
+
+resource "kubernetes_config_map" "aws_auth" {
+  depends_on = [module.eks]
+
+  metadata {
+    name      = "aws-auth"
+    namespace = "kube-system"
+  }
+
+  data = {
+    mapUsers = yamlencode([
+      {
+        userarn  = data.aws_caller_identity.current.arn
+        username = "cluster-bootstrap"
+        groups   = ["system:masters"]
+      },
+      {
+        userarn  = "arn:aws:iam::${var.aws_user_id}:user/${var.aws_user}"
+        username = "github-actions"
+        groups   = ["system:masters"]
+      }
+    ])
+    mapRoles = yamlencode(var.map_roles)
+  }
+}
+
+resource "helm_release" "nginx_ingress" {
+  depends_on = [kubernetes_config_map.aws_auth]
+
+  name       = "ingress-nginx"
+  repository = "https://kubernetes.github.io/ingress-nginx"
+  chart      = "ingress-nginx"
+  namespace  = "ingress-nginx"
+  create_namespace = true
+  version    = "4.0.19"
+
+  set {
+    name  = "controller.service.type"
+    value = "LoadBalancer"
+  }
+}
+
+# ─────────────────────────────────────────────────────────────
+# 4) Now fetch the AWS Load Balancer by tag—no Kubernetes API involved
+# ─────────────────────────────────────────────────────────────
+
+# data "aws_lb" "nginx_ingress" {
+#   depends_on = [helm_release.nginx_ingress]
+
+#   # Select the LB by the standard Kubernetes “service-name” tag:
+#   tags = {
+#     "kubernetes.io/service-name" = "ingress-nginx/ingress-nginx-controller"
+#   }
+# }

@@ -1,3 +1,6 @@
+# This module creates IAM roles and policies for EKS cluster and node groups
+# and configures the aws-auth ConfigMap to allow access to the EKS cluster.
+
 resource "aws_iam_role" "eks_node_group_role" {
   name = "eks-node-group-role-${var.environment}"
 
@@ -73,6 +76,16 @@ resource "aws_iam_role_policy" "github_eks_ci_policy" {
           "eks:DescribeCluster",
           "eks:ListClusters",
           "eks:AccessKubernetesApi"
+        ],
+        Resource = "*"
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "iam:ListRoles",
+          "iam:ListUsers",
+          "iam:GetRole",
+          "iam:GetUser"
         ],
         Resource = "*"
       }

@@ -29,29 +29,15 @@ output "private_sg_id" {
   description = "Private security group ID"
 }
 
-# # RDS Outputs
-# output "rds_endpoint" {
-#   value       = module.rds.db_endpoint
-#   description = "RDS endpoint"
+# ============================================
+# Root outputs.tf (or wherever you define outputs)
+# ============================================
+# output "nginx_elb_hostname" {
+#   description = "Hostname of the AWS LoadBalancer for nginx-ingress"
+#   value       = data.kubernetes_service.nginx_ingress_lb.status[0].load_balancer[0].ingress[0].hostname
 # }
 
-# output "rds_db_name" {
-#   value       = module.rds.db_name
-#   description = "RDS database name"
-# }
-
-# output "rds_db_port" {
-#   value       = module.rds.db_port
-#   description = "RDS port"
-# }
-
-# ECR Outputs
-# output "ecr_repository_url" {
-#   value       = module.ecr.repository_url
-#   description = "ECR repository URL"
-# }
-
-# output "ecr_repository_name" {
-#   value       = module.ecr.repository_name
-#   description = "ECR repository name"
+# output "nginx_elb_hostname" {
+#   description = "DNS name of the AWS Load Balancer created by ingress-nginx"
+#   value       = data.aws_lb.nginx_ingress.dns_name
 # }

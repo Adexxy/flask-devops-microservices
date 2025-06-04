@@ -25,6 +25,10 @@ class Notification(db.Model):
 with app.app_context():
     db.create_all()
 
+@app.route('/')
+def home():
+    return "Welcome to the Notification Service!", 200
+
 
 @app.route('/health', methods=['GET'])
 def health():

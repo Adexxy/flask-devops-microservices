@@ -26,6 +26,31 @@ resource "aws_eks_cluster" "microservices_cluster" {
   }
 }
 
+# ───────────────────────────────────────────
+# modules/eks/main.tf (add at top after aws_eks_cluster)
+# ───────────────────────────────────────────
+
+# Let this module create a data source to fetch its own auth token:
+data "aws_eks_cluster_auth" "this" {
+  name = aws_eks_cluster.microservices_cluster.name
+}
+
+# In‐module Kubernetes provider: points at the EKS cluster resource just created
+provider "kubernetes" {
+  host                   = aws_eks_cluster.microservices_cluster.endpoint
+  cluster_ca_certificate = base64decode(aws_eks_cluster.microservices_cluster.certificate_authority[0].data)
+  token                  = data.aws_eks_cluster_auth.this.token
+}
+
+# If you are also installing nginx‐ingress with Helm inside this module:
+provider "helm" {
+  kubernetes {
+    host                   = aws_eks_cluster.microservices_cluster.endpoint
+    cluster_ca_certificate = base64decode(aws_eks_cluster.microservices_cluster.certificate_authority[0].data)
+    token                  = data.aws_eks_cluster_auth.this.token
+  }
+}
+
 resource "aws_iam_role" "cluster" {
   name = "eks-cluster-${var.cluster_name}"
   assume_role_policy = jsonencode({
@@ -59,33 +84,33 @@ resource "aws_iam_role_policy_attachment" "cluster_AmazonEKSClusterPolicy" {
 #   }
 
 #   data = {
-#     mapUsers = yamlencode(var.map_users)
+#     # 1) map the “creator IAM principal” as bootstrap admin:
+#     mapUsers = yamlencode(
+#       [
+#         {
+#           userarn  = data.aws_caller_identity.current.arn
+#           username = "cluster-bootstrap"
+#           groups   = ["system:masters"]
+#         }
+#       ]
+#       # 2) then append any additional map_users passed in
+#     )
+
+#     # 3) map node‐group role(s) so EC2 nodes can join
 #     mapRoles = yamlencode(var.map_roles)
 #   }
 # }
 
-resource "kubernetes_config_map" "aws_auth" {
-  depends_on = [aws_eks_cluster.microservices_cluster]
+# resource "helm_release" "nginx_ingress" {
+#   name       = "ingress-nginx"
+#   repository = "https://kubernetes.github.io/ingress-nginx"
+#   chart      = "ingress-nginx"
+#   namespace  = "ingress-nginx"
+#   create_namespace = true
 
-  metadata {
-    name      = "aws-auth"
-    namespace = "kube-system"
-  }
+#   set {
+#     name  = "controller.service.type"
+#     value = "LoadBalancer"
+#   }
+# }
 
-  data = {
-    # 1) map the “creator IAM principal” as bootstrap admin:
-    mapUsers = yamlencode(
-      [
-        {
-          userarn  = data.aws_caller_identity.current.arn
-          username = "cluster-bootstrap"
-          groups   = ["system:masters"]
-        }
-      ]
-      # 2) then append any additional map_users passed in
-    )
-
-    # 3) map node‐group role(s) so EC2 nodes can join
-    mapRoles = yamlencode(var.map_roles)
-  }
-}

@@ -119,3 +119,13 @@ variable "aws_user" {
 variable "aws_user_id" {
   description = "aws user id"
 }
+
+variable "map_roles" {
+  description = "Map of IAM roles to Kubernetes roles"
+  type        = list(object({
+    rolearn  = string
+    username = string
+    groups   = list(string)
+  }))
+  default     = []
+}

@@ -22,6 +22,11 @@ class Product(db.Model):
 with app.app_context():
     db.create_all()
 
+@app.route('/')
+def home():
+    return "Welcome to the Product Service!", 200
+
+
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({'status': 'ok'}), 200

@@ -1,0 +1,17 @@
+
+ingress:
+  enabled: true
+  className: nginx  # or alb if using AWS ALB ingress controller
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: your-prod-domain.com
+      paths:
+        - path: /user
+          service: user
+        - path: /product
+          service: product
+        - path: /order
+          service: order
+        - path: /notification
+          service: notification
