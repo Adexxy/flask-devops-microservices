@@ -24,6 +24,8 @@ module "iam" {
   cluster_name = var.cluster_name
   repo_name   = var.repo_name
   github_branch = var.github_branch
+  github_oidc_role_name = var.github_oidc_role_name
+  github_oidc_sub = var.github_oidc_sub
 }
 
 module "eks" {

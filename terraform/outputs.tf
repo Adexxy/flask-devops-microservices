@@ -29,6 +29,11 @@ output "private_sg_id" {
   description = "Private security group ID"
 }
 
+output "github_oidc_role_arn" {
+  value = module.iam.github_oidc_role_arn
+}
+
+
 # ============================================
 # Root outputs.tf (or wherever you define outputs)
 # ============================================
