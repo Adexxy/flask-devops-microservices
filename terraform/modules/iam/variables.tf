@@ -27,3 +27,13 @@ variable "cluster_name" {
   type        = string
   
 }
+
+variable "github_oidc_role_name" {
+  type        = string
+  description = "Name for the GitHub Actions IAM Role"
+}
+
+variable "github_oidc_sub" {
+  type        = string
+  description = "GitHub OIDC subject: repo:<ORG>/<REPO>:ref:refs/heads/<BRANCH>"
+}
