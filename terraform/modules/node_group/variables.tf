@@ -20,7 +20,7 @@ variable "node_role_arn" {
 
 variable "instance_types" {
   type        = list(string)
-  default     = ["t3.medium"]
+  default     = ["t3.medium", "t3.large", "t3.xlarge"]
   description = "EC2 instance types for worker nodes"
 }
 
@@ -45,4 +45,14 @@ variable "max_size" {
 variable "environment" {
   type        = string
   description = "Environment (e.g., dev, prod)"
+}
+
+variable "taints" {
+  type = list(object({
+    key    = string
+    value  = string
+    effect = string
+  }))
+  default = []
+  description = "List of taints to apply to the node group"
 }

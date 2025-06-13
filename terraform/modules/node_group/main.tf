@@ -15,6 +15,26 @@ resource "aws_eks_node_group" "microservices_node_group" {
   ami_type       = "AL2023_x86_64_STANDARD"
   capacity_type  = "ON_DEMAND"
 
+  labels = {
+    "nodegroup"    = var.node_group_name
+    "environment"  = var.environment
+  }
+
+  taint {
+    key    = "dedicated"
+    value  = var.node_group_name
+    effect = "NO_SCHEDULE"
+  }
+
+  update_config {
+    max_unavailable = 1
+  }
+
+  lifecycle {
+    create_before_destroy = true
+    ignore_changes = [scaling_config[0].desired_size]
+  }
+
   tags = {
     Environment = var.environment
   }

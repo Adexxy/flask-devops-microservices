@@ -115,6 +115,12 @@ resource "aws_security_group" "public_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
+    from_port   = 5432 # PostgreSQL
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.microservices-vpc.cidr_block]
+  }
+  ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
