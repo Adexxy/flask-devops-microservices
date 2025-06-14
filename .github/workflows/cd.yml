@@ -83,6 +83,7 @@ jobs:
             ./continuous-deployment/helm-charts/microservices \
             --namespace $HELM_NAMESPACE \
             --create-namespace \
+            --set postgres.storageClass=gp2-csi \
             --set image.tag=${{ env.IMAGE_TAG }} \
             --wait
 
