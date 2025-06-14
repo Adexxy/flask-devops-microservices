@@ -205,6 +205,11 @@ jobs:
         run: |
           docker push ${{ steps.vars.outputs.repo }}:${{ env.IMAGE_TAG }}
 
+      - name: Tag and push as latest
+        run: |
+          docker tag ${{ steps.vars.outputs.repo }}:${{ env.IMAGE_TAG }} ${{ steps.vars.outputs.repo }}:latest
+          docker push ${{ steps.vars.outputs.repo }}:latest
+
 
   integration-test:
     needs: build_and_smoke_test
