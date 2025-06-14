@@ -11,11 +11,13 @@ resource "aws_eks_node_group" "microservices_node_group" {
   }
 
   instance_types = var.instance_types
-
   ami_type       = "AL2023_x86_64_STANDARD"
   capacity_type  = "ON_DEMAND"
 
-  tags = {
-    Environment = var.environment
-  }
+  # Ensure proper ordering
+  depends_on = [
+    # aws_eks_cluster.microservices_cluster,
+    # aws_eks_access_entry.default,
+    var.cluster_arn
+  ]
 }

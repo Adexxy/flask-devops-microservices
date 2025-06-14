@@ -1,4 +1,4 @@
-# This file defines the variables used in the Terraform configuration for the DevOps Microservices Platform.
+# This file defines the root variables used in the Terraform configuration for the DevOps Microservices Platform.
 
 variable "aws_region" {
   description = "The AWS region to deploy resources in"
@@ -59,19 +59,19 @@ variable "s3_key" {
 }
 
 variable "db_name" {
-    description = "The name of the RDS database"
-    type        = string
-    default     = "microservices_platform_db"
+  description = "The name of the RDS database"
+  type        = string
+  default     = "microservices_platform_db"
 }
 
-variable "db_user" {  
-    description = "The username for the RDS database"
-    type        = string
+variable "db_user" {
+  description = "The username for the RDS database"
+  type        = string
 }
 
 variable "db_password" {
-    description = "The password for the RDS database"
-    type        = string
+  description = "The password for the RDS database"
+  type        = string
 }
 
 variable "public_subnets_cidr" {
@@ -122,12 +122,12 @@ variable "aws_user_id" {
 
 variable "map_roles" {
   description = "Map of IAM roles to Kubernetes roles"
-  type        = list(object({
+  type = list(object({
     rolearn  = string
     username = string
     groups   = list(string)
   }))
-  default     = []
+  default = []
 }
 
 variable "github_oidc_role_name" {
@@ -138,4 +138,24 @@ variable "github_oidc_role_name" {
 variable "github_oidc_sub" {
   type        = string
   description = "GitHub OIDC subject: repo:<ORG>/<REPO>:ref:refs/heads/<BRANCH>"
+}
+
+variable "map_users" {
+  description = "Map of IAM users to Kubernetes users"
+  type = list(object({
+    userarn  = string
+    username = string
+    groups   = list(string)
+  }))
+  default = []
+}
+
+# variable "terraform_user_arn" {
+#   description = "ARN of the IAM user/role running Terraform"
+#   type        = string
+# }
+variable "admin_principal_arns" {
+  description = "List of ARNs for admin principals"
+  type        = list(string)
+  default     = []
 }

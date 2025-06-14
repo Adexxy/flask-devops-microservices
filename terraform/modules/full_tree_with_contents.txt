@@ -1,0 +1,937 @@
+📄 ./node_group/main.tf
+----------------------------------------
+resource "aws_eks_node_group" "microservices_node_group" {
+  cluster_name    = var.cluster_name
+  node_group_name = var.node_group_name
+  node_role_arn   = var.node_role_arn
+  subnet_ids      = var.subnet_ids
+
+  scaling_config {
+    desired_size = var.desired_capacity
+    min_size     = var.min_size
+    max_size     = var.max_size
+  }
+
+  instance_types = var.instance_types
+
+  ami_type       = "AL2023_x86_64_STANDARD"
+  capacity_type  = "ON_DEMAND"
+
+  tags = {
+    Environment = var.environment
+  }
+}
+
+
+
+📄 ./node_group/outputs.tf
+----------------------------------------
+
+
+
+📄 ./node_group/variables.tf
+----------------------------------------
+variable "cluster_name" {
+  type        = string
+  description = "Name of the EKS cluster"
+}
+
+variable "node_group_name" {
+  type        = string
+  description = "Name of the node group"
+}
+
+variable "subnet_ids" {
+  type        = list(string)
+  description = "Subnets for the node group"
+}
+
+variable "node_role_arn" {
+  type        = string
+  description = "IAM role ARN for EKS worker nodes"
+}
+
+variable "instance_types" {
+  type        = list(string)
+  default     = ["t3.medium"]
+  description = "EC2 instance types for worker nodes"
+}
+
+variable "desired_capacity" {
+  type        = number
+  default     = 2
+  description = "Desired number of worker nodes"
+}
+
+variable "min_size" {
+  type        = number
+  default     = 1
+  description = "Minimum number of worker nodes"
+}
+
+variable "max_size" {
+  type        = number
+  default     = 3
+  description = "Maximum number of worker nodes"
+}
+
+variable "environment" {
+  type        = string
+  description = "Environment (e.g., dev, prod)"
+}
+
+
+
+📄 ./iam/main.tf
+----------------------------------------
+# This module creates IAM roles and policies for EKS cluster and node groups
+# and configures the aws-auth ConfigMap to allow access to the EKS cluster.
+
+resource "aws_iam_openid_connect_provider" "github" {
+  url             = "https://token.actions.githubusercontent.com"
+  client_id_list  = ["sts.amazonaws.com"]
+  # thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
+}
+
+resource "aws_iam_role" "github_oidc_role" {
+  name = var.github_oidc_role_name
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = {
+        Federated = aws_iam_openid_connect_provider.github.arn
+      },
+      Action = "sts:AssumeRoleWithWebIdentity",
+      Condition = {
+        StringLike = {
+          "token.actions.githubusercontent.com:sub" = var.github_oidc_sub
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eks_admin" {
+  role       = aws_iam_role.github_oidc_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "eks_admin" {
+  role       = aws_iam_role.terraform_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterAdminPolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "eks_node_policy" {
+  role       = aws_iam_role.terraform_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "ecr_power_user" {
+  role       = aws_iam_role.github_oidc_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+}
+
+
+resource "aws_iam_role" "eks_node_group_role" {
+  name = "eks-node-group-role-${var.environment}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+  
+  tags = {
+    Name        = "eks-node-group-role-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+# Required for node group functionality
+resource "aws_iam_role_policy_attachment" "node_AmazonEKSWorkerNodePolicy" {
+  role       = aws_iam_role.eks_node_group_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+# Required for networking (CNI plugin)
+resource "aws_iam_role_policy_attachment" "node_AmazonEKS_CNI_Policy" {
+  role       = aws_iam_role.eks_node_group_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
+
+# Required to pull container images from ECR
+resource "aws_iam_role_policy_attachment" "node_AmazonEC2ContainerRegistryReadOnly" {
+  role       = aws_iam_role.eks_node_group_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
+# resource "aws_iam_role" "github_eks_ci" {
+#   name = "github-eks-ci-${var.cluster_name}"
+
+#   assume_role_policy = jsonencode({
+#     Version = "2012-10-17",
+#     Statement = [
+#       {
+#         Effect = "Allow",
+#         Principal = {
+#           Federated = "arn:aws:iam::${var.account_id}:oidc-provider/token.actions.githubusercontent.com"
+#         },
+#         Action = "sts:AssumeRoleWithWebIdentity",
+#         Condition = {
+#           StringEquals = {
+#             "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/${var.repo_name}:ref:refs/heads/${var.github_branch}"
+#           }
+#         }
+#       }
+#     ]
+#   })
+# }
+
+# resource "aws_iam_role_policy" "github_eks_ci_policy" {
+#   name = "github-eks-access"
+#   role = aws_iam_role.github_eks_ci.name
+
+#   policy = jsonencode({
+#     Version = "2012-10-17",
+#     Statement = [
+#       {
+#         Effect = "Allow",
+#         Action = [
+#           "eks:DescribeCluster",
+#           "eks:ListClusters",
+#           "eks:AccessKubernetesApi"
+#         ],
+#         Resource = "*"
+#       },
+#       {
+#         "Effect": "Allow",
+#         "Action": [
+#           "iam:ListRoles",
+#           "iam:ListUsers",
+#           "iam:GetRole",
+#           "iam:GetUser"
+#         ],
+#         Resource = "*"
+#       }
+#     ]
+#   })
+# }
+
+resource "aws_iam_role_policy" "github_oidc_restricted" {
+  name = "github-oidc-restricted"
+  role = aws_iam_role.github_oidc_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "eks:DescribeCluster",
+          "eks:ListClusters",
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:GetRepositoryPolicy",
+          "ecr:DescribeRepositories",
+          "ecr:ListImages",
+          "ecr:DescribeImages",
+          "ecr:BatchGetImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload",
+          "ecr:PutImage"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+
+📄 ./iam/outputs.tf
+----------------------------------------
+
+output "eks_node_group_role_arn" {
+  value = aws_iam_role.eks_node_group_role.arn
+}
+
+output "github_oidc_role_arn" {
+  value = aws_iam_role.github_oidc_role.arn
+}
+
+
+
+📄 ./iam/variables.tf
+----------------------------------------
+variable "environment" {
+  description = "Deployment environment"
+  type        = string
+}
+
+variable "account_id" {
+  description = "AWS Account ID"
+  type        = string
+}
+
+variable "github_org" {
+  description = "GitHub Organization Name"
+  type        = string
+}
+
+variable "repo_name" {
+  description = "GitHub Repository Name"
+  type        = string
+}
+
+variable "github_branch" {
+  default = "main"
+}
+
+variable "cluster_name" {
+  description = "Name of the EKS cluster"
+  type        = string
+  
+}
+
+variable "github_oidc_role_name" {
+  type        = string
+  description = "Name for the GitHub Actions IAM Role"
+}
+
+variable "github_oidc_sub" {
+  type        = string
+  description = "GitHub OIDC subject: repo:<ORG>/<REPO>:ref:refs/heads/<BRANCH>"
+}
+
+
+
+📄 ./full_tree_with_contents.txt
+----------------------------------------
+
+
+
+📄 ./vpc/main.tf
+----------------------------------------
+resource "aws_vpc" "microservices-vpc" {
+  cidr_block = var.vpc_cidr
+  enable_dns_support = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = var.vpc_name
+    Environment = var.environment
+  }
+}
+
+resource "aws_internet_gateway" "microservices" {
+  vpc_id = aws_vpc.microservices-vpc.id
+  tags = {
+    Name = "${var.vpc_name}-igw"
+    Environment = var.environment
+  }
+}
+
+resource "aws_subnet" "public_subnets" {
+  count = length(var.public_subnets)
+  vpc_id = aws_vpc.microservices-vpc.id
+  cidr_block = var.public_subnets_cidr[count.index]
+  availability_zone = element(var.azs, count.index)
+
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "${var.name}-public-${count.index + 1}"
+    Environment = var.environment
+  }
+}
+
+resource "aws_subnet" "private_subnets" {
+  count = length(var.private_subnets)
+  vpc_id = aws_vpc.microservices-vpc.id
+  cidr_block = var.private_subnets_cidr[count.index]
+  availability_zone = element(var.azs, count.index)
+
+  tags = {
+    Name = "${var.name}-private-${count.index + 1}"
+    Environment = var.environment
+  }
+}
+
+resource "aws_eip" "microservices_nat" {
+
+  tags = {
+    Name = "${var.name}-nat-eip"
+    Environment = var.environment
+  }
+}
+
+resource "aws_nat_gateway" "microservices_nat" {
+  allocation_id = aws_eip.microservices_nat.id
+  subnet_id = aws_subnet.public_subnets[0].id
+
+  tags = {
+    Name = "${var.name}-nat-gateway"
+    Environment = var.environment
+  }
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.microservices-vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.microservices.id
+  }
+  tags = {
+    Name = "${var.name}-public-rt"
+    Environment = var.environment
+  }
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.microservices-vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.microservices_nat.id
+  }
+
+  tags = {
+    Name = "${var.name}-private-rt"
+    Environment = var.environment
+  }
+}
+
+resource "aws_route_table_association" "public" {
+  count = length(aws_subnet.public_subnets)
+  subnet_id = aws_subnet.public_subnets[count.index].id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "private" {
+  count = length(aws_subnet.private_subnets)
+  subnet_id = aws_subnet.private_subnets[count.index].id
+  route_table_id = aws_route_table.private.id
+}
+
+# Security Group for the VPC
+// Public SG: For resources in public subnets (e.g., ALB, bastion)
+resource "aws_security_group" "public_sg" {
+  name        = "${var.name}-public-sg"
+  description = "Security group for public subnet resources"
+  vpc_id      = aws_vpc.microservices-vpc.id
+
+  // Example: Allow HTTP/HTTPS from anywhere
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  // Egress: Allow all
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = {
+    Name = "${var.name}-public-sg"
+    Environment = var.environment
+  }
+}
+
+// Private SG: For resources in private subnets (e.g., EKS nodes, RDS)
+resource "aws_security_group" "private_sg" {
+  name        = "${var.name}-private-sg"
+  description = "Security group for private subnet resources"
+  vpc_id      = aws_vpc.microservices-vpc.id
+
+  // Example: Allow all traffic from within the VPC
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [aws_vpc.microservices-vpc.cidr_block]
+  }
+  // Egress: Allow all
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = {
+    Name = "${var.name}-private-sg"
+    Environment = var.environment
+  }
+}
+
+
+
+
+📄 ./vpc/outputs.tf
+----------------------------------------
+output "vpc_id" {
+  value = aws_vpc.microservices-vpc.id
+}
+
+output "public_subnet_ids" {
+  description = "List of public subnet IDs"
+  value = [for subnet in aws_subnet.public_subnets : subnet.id]
+}
+
+output "private_subnet_ids" {
+  description = "List of private subnet IDs"
+  value = [for subnet in aws_subnet.private_subnets : subnet.id]
+}
+
+output "public_sg_id" {
+  value = aws_security_group.public_sg.id
+}
+
+output "private_sg_id" {
+  value = aws_security_group.private_sg.id
+}
+
+output "vpc_security_group_ids" {
+  description = "List of security group IDs for the VPC"
+  value = [
+    aws_security_group.public_sg.id,
+    aws_security_group.private_sg.id
+  ]
+  
+}
+
+# output "default_sg_id" {
+#   value = aws_security_group.microservices_sg.id
+# }
+
+# output "private_subnet_ids" {
+#   value = aws_subnet.private_subnet_ids[*].id
+# }
+
+# output "private_subnets" {
+#   description = "List of private subnet IDs"
+#   value       = aws_subnet.private_subnets[*].id
+# }
+
+
+
+📄 ./vpc/variables.tf
+----------------------------------------
+variable "aws_region" {
+  description = "The AWS region to deploy resources in"
+  type        = string
+}
+
+variable "vpc_name" {
+  description = "The name of the VPC"
+  type        = string
+  default     = "devops-vpc"
+}
+
+variable "vpc_cidr" {
+  description = "The CIDR block for the VPC"
+  type        = string
+}
+
+variable "public_subnets" {
+  description = "List of public subnet CIDR blocks"
+  type        = list(string)
+}
+
+variable "private_subnets" {
+  description = "List of private subnet CIDR blocks"
+  type        = list(string)
+}
+
+variable "public_subnets_cidr" {
+  description = "List of public subnet CIDR blocks"
+  type        = list(string)
+}
+
+variable "private_subnets_cidr" {
+  description = "List of private subnet CIDR blocks"
+  type        = list(string)
+}
+
+variable "azs" {
+  description = "List of availability zones"
+  type        = list(string)
+}
+
+variable "environment" {
+  description = "Deployment environment"
+  type        = string
+}
+
+variable "name" {
+  description = "Base name for resources"
+  type        = string
+  default = "microservices"
+}
+
+
+📄 ./s3/main.tf
+----------------------------------------
+
+
+
+
+📄 ./s3/variables.tf
+----------------------------------------
+
+
+
+📄 ./ecr/main.tf
+----------------------------------------
+# ecr.tf
+resource "aws_ecr_repository" "services" {
+  for_each = toset(var.service_names)
+
+  name = each.key
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Name        = each.key
+    Environment = var.environment
+  }
+}
+
+
+
+
+📄 ./ecr/outputs.tf
+----------------------------------------
+# outputs.tf
+output "ecr_repos" {
+  value = {
+    for name, repo in aws_ecr_repository.services : name => repo.repository_url
+  }
+}
+
+
+📄 ./ecr/variables.tf
+----------------------------------------
+# variables.tf
+variable "service_names" {
+  description = "List of microservices to create ECR repositories for"
+  type        = list(string)
+}
+
+variable "environment" {
+  description = "Environment for the ECR repositories (e.g., dev, prod)"
+  type        = string
+}
+
+
+
+📄 ./eks/main.tf
+----------------------------------------
+# Module: `modules/eks/main.tf`
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_eks_cluster" "microservices_cluster" {
+  name = var.cluster_name
+
+  access_config {
+    authentication_mode = "API"
+  }
+
+  role_arn = aws_iam_role.cluster.arn
+  version  = "1.33"
+
+  vpc_config {
+    subnet_ids = var.private_subnets
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.cluster_AmazonEKSClusterPolicy,
+  ]
+
+  tags = {
+    Name        = "eks-cluster-${var.cluster_name}"
+    Environment = var.environment
+  }
+}
+
+# ───────────────────────────────────────────
+# modules/eks/main.tf (add at top after aws_eks_cluster)
+# ───────────────────────────────────────────
+
+# Let this module create a data source to fetch its own auth token:
+data "aws_eks_cluster_auth" "this" {
+  name = aws_eks_cluster.microservices_cluster.name
+}
+
+# In‐module Kubernetes provider: points at the EKS cluster resource just created
+provider "kubernetes" {
+  host                   = aws_eks_cluster.microservices_cluster.endpoint
+  cluster_ca_certificate = base64decode(aws_eks_cluster.microservices_cluster.certificate_authority[0].data)
+  token                  = data.aws_eks_cluster_auth.this.token
+}
+
+# If you are also installing nginx‐ingress with Helm inside this module:
+provider "helm" {
+  kubernetes {
+    host                   = aws_eks_cluster.microservices_cluster.endpoint
+    cluster_ca_certificate = base64decode(aws_eks_cluster.microservices_cluster.certificate_authority[0].data)
+    token                  = data.aws_eks_cluster_auth.this.token
+  }
+}
+
+resource "aws_iam_role" "cluster" {
+  name = "eks-cluster-${var.cluster_name}"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "sts:AssumeRole",
+          "sts:TagSession"
+        ]
+        Effect = "Allow"
+        Principal = {
+          Service = "eks.amazonaws.com"
+        }
+      },
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "cluster_AmazonEKSClusterPolicy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+  role       = aws_iam_role.cluster.name
+}
+
+resource "aws_eks_access_entry" "terraform_user" {
+  cluster_name = aws_eks_cluster.microservices_cluster.name
+  principal_arn = var.terraform_user_arn
+  type = "STANDARD"
+
+  # Associate access policies
+  access_policies {
+    policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+    access_scope {
+      type = "cluster"
+    }
+  }
+}
+
+resource "aws_eks_access_entry" "admin_users" {
+  for_each = toset(var.admin_principal_arns)
+
+  cluster_name = aws_eks_cluster.microservices_cluster.name
+  principal_arn = each.value
+  type = "STANDARD"
+
+  access_policies {
+    policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+    access_scope {
+      type = "cluster"
+    }
+  }
+}
+
+resource "aws_eks_access_entry" "node_group" {
+  cluster_name = aws_eks_cluster.microservices_cluster.name
+  principal_arn = module.iam.eks_node_group_role_arn
+  type = "EC2_LINUX"
+
+  access_policies {
+    policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSAutoNodePolicy"
+    access_scope {
+      type = "namespace"
+      namespaces = ["kube-system"]
+    }
+  }
+}
+
+
+📄 ./eks/outputs.tf
+----------------------------------------
+output "cluster_name" {
+  value = aws_eks_cluster.microservices_cluster.name
+}
+
+output "cluster_security_group_id" {
+  value = aws_eks_cluster.microservices_cluster.vpc_config[0].cluster_security_group_id
+}
+
+output "cluster_endpoint" {
+  value = aws_eks_cluster.microservices_cluster.endpoint
+}
+
+output "cluster_certificate_authority_data" {
+  value = aws_eks_cluster.microservices_cluster.certificate_authority[0].data
+}
+
+
+
+📄 ./eks/variables.tf
+----------------------------------------
+variable "cluster_name" {
+  description = "List of subnet IDs for the RDS subnet group"
+  type        = string
+}
+
+variable "subnet_ids" {
+  description = "List of subnet IDs for the RDS subnet group"
+  type        = list(string)
+}
+
+variable "vpc_id" {
+  description = "The ID of the VPC where the EKS cluster will be deployed"
+  type        = string
+}
+
+# variable "node_role_arn" {
+#   description = "The ARN of the IAM role for the EKS nodes"
+#   type        = string
+# }
+
+variable "azs" {
+  description = "List of Availability Zones"
+  type        = list(string)
+}
+
+variable "private_subnets" {
+  description = "List of private subnet IDs for the EKS cluster"
+  type        = list(string)
+}
+
+variable "environment" {
+  description = "Environment for the EKS cluster (e.g., dev, prod)"
+  type        = string
+}
+
+# variable "map_users" {
+#   description = "List of IAM users to add to aws-auth configmap"
+#   type        = list(any)
+#   default     = []
+# }
+
+variable "map_users" {
+  type = list(object({
+    userarn  = string
+    username = string
+    groups   = list(string)
+  }))
+  default = []
+}
+
+
+variable "map_roles" {
+  description = "List of IAM roles to add to aws-auth configmap"
+  type        = list(any)
+  default     = []
+}
+
+variable "terraform_user_arn" {
+  description = "ARN of the IAM user/role running Terraform"
+  type        = string
+}
+
+variable "admin_principal_arns" {
+  description = "List of ARNs for principals that should have admin access to the cluster"
+  type        = list(string)
+  default     = []
+}
+
+
+📄 ./rds/main.tf
+----------------------------------------
+# Module: `modules/rds/main.tf`
+resource "aws_db_subnet_group" "postres_subnet_group" {
+  name       = "rds-subnet-group"
+  subnet_ids = var.subnet_ids
+}
+
+resource "aws_db_instance" "postgres" {
+  allocated_storage    = 20
+  engine               = "postgres"
+  engine_version       = "17.4"
+  instance_class       = "db.t3.micro"
+  username             = var.db_user
+  password             = var.db_password
+  skip_final_snapshot  = true
+  publicly_accessible  = false
+  vpc_security_group_ids = var.security_groups
+  db_name              = var.db_name
+  db_subnet_group_name = aws_db_subnet_group.postres_subnet_group.name
+  
+  tags = {
+    Name = "postgres-db-instance"
+    Environment = var.environment
+  }
+}
+
+
+
+
+
+
+📄 ./rds/outputs.tf
+----------------------------------------
+output "endpoint" {
+  value = aws_db_instance.postgres.endpoint
+}
+
+
+📄 ./rds/variables.tf
+----------------------------------------
+variable "subnet_ids" {
+  description = "List of subnet IDs for the RDS subnet group"
+  type        = list(string)
+}
+
+variable "db_user" {
+  description = "Username for the RDS instance"
+  type        = string
+}
+
+variable "db_password" {
+  description = "Password for the RDS instance"
+  type        = string
+  sensitive   = true
+}
+
+variable "db_name" {
+  description = "Database name for the RDS instance"
+  type        = string
+}
+
+variable "security_groups" {
+  description = "List of security group IDs to associate with the RDS instance"
+  type        = list(string)
+}
+
+variable "environment" {
+  description = "Environment for the RDS instance (e.g., dev, prod)"
+  type        = string
+}
+
+
+

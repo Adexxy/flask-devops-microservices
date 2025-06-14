@@ -1,71 +1,32 @@
-# Module: `modules/eks/main.tf`
-
-data "aws_caller_identity" "current" {}
-
 resource "aws_eks_cluster" "microservices_cluster" {
-  name = var.cluster_name
-
-  access_config {
-    authentication_mode = "API"
-  }
-
+  name     = var.cluster_name
   role_arn = aws_iam_role.cluster.arn
   version  = "1.33"
 
   vpc_config {
-    subnet_ids = var.private_subnets
+    subnet_ids              = var.private_subnets
+    endpoint_private_access = true
+    endpoint_public_access  = true
   }
 
   depends_on = [
     aws_iam_role_policy_attachment.cluster_AmazonEKSClusterPolicy,
   ]
-
-  tags = {
-    Name        = "eks-cluster-${var.cluster_name}"
-    Environment = var.environment
-  }
-}
-
-# ───────────────────────────────────────────
-# modules/eks/main.tf (add at top after aws_eks_cluster)
-# ───────────────────────────────────────────
-
-# Let this module create a data source to fetch its own auth token:
-data "aws_eks_cluster_auth" "this" {
-  name = aws_eks_cluster.microservices_cluster.name
-}
-
-# In‐module Kubernetes provider: points at the EKS cluster resource just created
-provider "kubernetes" {
-  host                   = aws_eks_cluster.microservices_cluster.endpoint
-  cluster_ca_certificate = base64decode(aws_eks_cluster.microservices_cluster.certificate_authority[0].data)
-  token                  = data.aws_eks_cluster_auth.this.token
-}
-
-# If you are also installing nginx‐ingress with Helm inside this module:
-provider "helm" {
-  kubernetes {
-    host                   = aws_eks_cluster.microservices_cluster.endpoint
-    cluster_ca_certificate = base64decode(aws_eks_cluster.microservices_cluster.certificate_authority[0].data)
-    token                  = data.aws_eks_cluster_auth.this.token
-  }
 }
 
 resource "aws_iam_role" "cluster" {
   name = "eks-cluster-${var.cluster_name}"
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Action = [
-          "sts:AssumeRole",
-          "sts:TagSession"
-        ]
         Effect = "Allow"
         Principal = {
           Service = "eks.amazonaws.com"
         }
-      },
+        Action = "sts:AssumeRole"
+      }
     ]
   })
 }
@@ -75,42 +36,20 @@ resource "aws_iam_role_policy_attachment" "cluster_AmazonEKSClusterPolicy" {
   role       = aws_iam_role.cluster.name
 }
 
-# resource "kubernetes_config_map" "aws_auth" {
-#   depends_on = [aws_eks_cluster.microservices_cluster]
+resource "aws_eks_access_entry" "default" {
+  cluster_name  = aws_eks_cluster.microservices_cluster.name
+  principal_arn = var.terraform_user_arn
+  type          = "STANDARD"
+}
 
-#   metadata {
-#     name      = "aws-auth"
-#     namespace = "kube-system"
-#   }
+resource "aws_eks_access_policy_association" "admin_policy" {
+  cluster_name  = aws_eks_cluster.microservices_cluster.name
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+  principal_arn = var.terraform_user_arn
 
-#   data = {
-#     # 1) map the “creator IAM principal” as bootstrap admin:
-#     mapUsers = yamlencode(
-#       [
-#         {
-#           userarn  = data.aws_caller_identity.current.arn
-#           username = "cluster-bootstrap"
-#           groups   = ["system:masters"]
-#         }
-#       ]
-#       # 2) then append any additional map_users passed in
-#     )
+  access_scope {
+    type = "cluster"
+  }
 
-#     # 3) map node‐group role(s) so EC2 nodes can join
-#     mapRoles = yamlencode(var.map_roles)
-#   }
-# }
-
-# resource "helm_release" "nginx_ingress" {
-#   name       = "ingress-nginx"
-#   repository = "https://kubernetes.github.io/ingress-nginx"
-#   chart      = "ingress-nginx"
-#   namespace  = "ingress-nginx"
-#   create_namespace = true
-
-#   set {
-#     name  = "controller.service.type"
-#     value = "LoadBalancer"
-#   }
-# }
-
+  depends_on = [aws_eks_access_entry.default]
+}

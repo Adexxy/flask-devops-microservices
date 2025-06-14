@@ -55,3 +55,13 @@ variable "map_roles" {
   default     = []
 }
 
+variable "terraform_user_arn" {
+  description = "ARN of the IAM user/role running Terraform"
+  type        = string
+}
+
+variable "admin_principal_arns" {
+  description = "List of ARNs for principals that should have admin access to the cluster"
+  type        = list(string)
+  default     = []
+}

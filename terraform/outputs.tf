@@ -1,3 +1,5 @@
+# Root outputs.tf to pull all modules together
+
 # EKS Outputs
 output "eks_cluster_name" {
   value = module.eks.cluster_name
@@ -33,16 +35,12 @@ output "github_oidc_role_arn" {
   value = module.iam.github_oidc_role_arn
 }
 
+output "ecr_repository_urls" {
+  value       = module.ecr.ecr_repos
+  description = "Map of ECR repository URLs"
+}
 
-# ============================================
-# Root outputs.tf (or wherever you define outputs)
-# ============================================
-# output "nginx_elb_hostname" {
-#   description = "Hostname of the AWS LoadBalancer for nginx-ingress"
-#   value       = data.kubernetes_service.nginx_ingress_lb.status[0].load_balancer[0].ingress[0].hostname
-# }
-
-# output "nginx_elb_hostname" {
-#   description = "DNS name of the AWS Load Balancer created by ingress-nginx"
-#   value       = data.aws_lb.nginx_ingress.dns_name
-# }
+output "ingress_controller_endpoint" {
+  value       = "http://${helm_release.nginx_ingress.name}.${helm_release.nginx_ingress.namespace}.svc.cluster.local"
+  description = "NGINX Ingress Controller Endpoint"
+}

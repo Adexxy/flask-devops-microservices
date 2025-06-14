@@ -46,3 +46,8 @@ variable "environment" {
   type        = string
   description = "Environment (e.g., dev, prod)"
 }
+
+variable "cluster_arn" {
+  type        = string
+  description = "ARN of the EKS cluster"
+}
