@@ -12,44 +12,44 @@ services:
   notification:
     port: 5004
 
-# ingress:
-#   enabled: true
-#   className: nginx
-#   annotations:
-#     nginx.ingress.kubernetes.io/rewrite-target: /
-#   hosts:
-#     - host: microservices.local
-#       paths:
-#         - path: /user
-#           service: user
-#         - path: /product
-#           service: product
-#         - path: /order
-#           service: order
-#         - path: /notification
-#           service: notification
-
 ingress:
   enabled: true
   className: nginx
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
-    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /
   hosts:
     - host: microservices.local
       paths:
-        - path: /user(/|$)(.*)
-          pathType: Prefix
-          service: user-service
-        - path: /product(/|$)(.*)
-          pathType: Prefix
-          service: product-service
-        - path: /order(/|$)(.*)
-          pathType: Prefix
-          service: order-service
-        - path: /notification(/|$)(.*)
-          pathType: Prefix
-          service: notification-service
+        - path: /user
+          service: user
+        - path: /product
+          service: product
+        - path: /order
+          service: order
+        - path: /notification
+          service: notification
+
+# ingress:
+#   enabled: true
+#   className: nginx
+#   annotations:
+#     nginx.ingress.kubernetes.io/rewrite-target: /$2
+#     nginx.ingress.kubernetes.io/use-regex: "true"
+#   hosts:
+#     - host: microservices.local
+#       paths:
+#         - path: /user(/|$)(.*)
+#           pathType: Prefix
+#           service: user-service
+#         - path: /product(/|$)(.*)
+#           pathType: Prefix
+#           service: product-service
+#         - path: /order(/|$)(.*)
+#           pathType: Prefix
+#           service: order-service
+#         - path: /notification(/|$)(.*)
+#           pathType: Prefix
+#           service: notification-service
 
 env:
   tag: latest
