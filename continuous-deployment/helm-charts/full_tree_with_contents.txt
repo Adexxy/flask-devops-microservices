@@ -1,0 +1,276 @@
+📄 ./full_tree_with_contents.txt
+----------------------------------------
+
+
+
+📄 ./microservices/values.yaml
+----------------------------------------
+image:
+  repository: your-docker-repo
+  tag: latest
+
+services:
+  user:
+    port: 5001
+  product:
+    port: 5002
+  order:
+    port: 5003
+  notification:
+    port: 5004
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: microservices.local
+      paths:
+        - path: /user
+          service: user
+        - path: /product
+          service: product
+        - path: /order
+          service: order
+        - path: /notification
+          service: notification
+
+env:
+  tag: latest
+  SECRET_KEY: change-me-secret-key
+
+
+
+
+
+📄 ./microservices/Chart.yaml
+----------------------------------------
+apiVersion: v2
+name: flask-microservices
+version: 0.1.0
+description: A Helm chart for deploying multiple microservices
+
+
+📄 ./microservices/templates/deployment.yaml
+----------------------------------------
+{{- range $name, $svc := .Values.services }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}
+    spec:
+      containers:
+        - name: {{ $.Chart.Name }}
+          image: "{{ $.Values.image.repository }}/{{ $name }}_service:{{ $.Values.image.tag | default $.Values.env.tag | default "latest" }}"
+          env:
+            - name: SECRET_KEY
+              value: "{{ $.Values.env.SECRET_KEY }}"
+          ports:
+            - containerPort: {{ $svc.port }}
+          {{- if $svc.resources }}
+          resources:
+            {{- if $svc.resources.requests }}
+            requests:
+              cpu: {{ $svc.resources.requests.cpu | quote }}
+              memory: {{ $svc.resources.requests.memory | quote }}
+            {{- end }}
+            {{- if $svc.resources.limits }}
+            limits:
+              cpu: {{ $svc.resources.limits.cpu | quote }}
+              memory: {{ $svc.resources.limits.memory | quote }}
+            {{- end }}
+          {{- end }}
+---
+{{- end }}
+
+
+
+
+
+# {{- range $name, $svc := .Values.services }}
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: {{ $name }}-deployment
+# spec:
+#   replicas: 1
+#   selector:
+#     matchLabels:
+#       app: {{ $name }}
+#   template:
+#     metadata:
+#       labels:
+#         app: {{ $name }}
+#     spec:
+#       containers:
+#         - name: {{ $.Chart.Name }}
+#           image: "{{ $svc.image }}"
+#           env:
+#             - name: ENV_VAR
+#               value: "{{ $.Values.env.ENV_VAR }}"
+#           ports:
+#             - containerPort: {{ $svc.port }}
+#           {{- if $svc.resources }}
+#           resources:
+#             {{- if $svc.resources.requests }}
+#             requests:
+#               cpu: {{ $svc.resources.requests.cpu | quote }}
+#               memory: {{ $svc.resources.requests.memory | quote }}
+#             {{- end }}
+#             {{- if $svc.resources.limits }}
+#             limits:
+#               cpu: {{ $svc.resources.limits.cpu | quote }}
+#               memory: {{ $svc.resources.limits.memory | quote }}
+#             {{- end }}
+#           {{- end }}
+# ---
+# {{- end }}
+
+
+📄 ./microservices/templates/_helpers.tpl
+----------------------------------------
+{{/* Return full name */}}
+{{- define "microservices.fullname" -}}
+{{ .Release.Name }}-{{ .Chart.Name }}
+{{- end -}}
+
+
+📄 ./microservices/templates/ingress.yaml
+----------------------------------------
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: microservices-ingress
+  annotations:
+    {{- range $key, $value := .Values.ingress.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .service }}-service
+                port:
+                  number: 80
+          {{- end }}
+    {{- end }}
+{{- end }}
+
+
+📄 ./microservices/templates/service.yaml
+----------------------------------------
+{{- range $name, $svc := .Values.services }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}-service
+spec:
+  selector:
+    app: {{ $name }}
+  ports:
+    - port: 80
+      targetPort: {{ $svc.port }}
+---
+{{- end }}
+
+
+📄 ./microservices/templates/postgres.yaml
+----------------------------------------
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: postgres
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15
+          env:
+            - name: POSTGRES_USER
+              value: "devuser"
+            - name: POSTGRES_PASSWORD
+              value: "devpass"
+            - name: POSTGRES_DB
+              value: "devdb"
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgres-storage
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+
+
+
+📄 ./microservices/values-eks.yaml
+----------------------------------------
+
+ingress:
+  enabled: true
+  className: nginx  # or alb if using AWS ALB ingress controller
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: your-prod-domain.com
+      paths:
+        - path: /user
+          service: user
+        - path: /product
+          service: product
+        - path: /order
+          service: order
+        - path: /notification
+          service: notification
+
+
+

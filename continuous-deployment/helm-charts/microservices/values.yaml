@@ -33,60 +33,14 @@ env:
   tag: latest
   SECRET_KEY: change-me-secret-key
 
+# ... (existing values remain the same)
+
+postgres:
+  enabled: true
+  user: "devuser"
+  password: "devpass"
+  database: "devdb"
+  storageSize: "1Gi"
+  storageClass: "gp2"  # "gp2" for EKS, "standard" for GKE, or omit for default
 
 
-
-# image:
-#   repository: your-docker-repo/your-service
-#   tag: "{{ .Values.image.tag | default .Values.env.tag | default 'latest' }}"
-
-# services:
-#   user:
-#     image: "{{ .Values.image.repository }}/user_service:{{ .Values.image.tag | default .Values.env.tag | default 'latest' }}"
-#     port: 5001
-#   product:
-#     image: "{{ .Values.image.repository }}/product_service:{{ .Values.image.tag | default .Values.env.tag | default 'latest' }}"
-#     port: 5002
-#   order:
-#     image: "{{ .Values.image.repository }}/order_service:{{ .Values.image.tag | default .Values.env.tag | default 'latest' }}"
-#     port: 5003
-#     resources:
-#       requests:
-#         cpu: "200m"
-#         memory: "256Mi"
-#       limits:
-#         cpu: "500m"
-#         memory: "512Mi"
-#   notification:
-#     image: "{{ .Values.image.repository }}/notification_service:{{ .Values.image.tag | default .Values.env.tag | default 'latest' }}"
-#     port: 5004
-#     resources:
-#       requests:
-#         cpu: "200m"
-#         memory: "256Mi"
-#       limits:
-#         cpu: "500m"
-#         memory: "512Mi"
-
-# ingress:
-#   enabled: true
-#   className: nginx
-#   annotations:
-#     nginx.ingress.kubernetes.io/rewrite-target: /
-#   hosts:
-#     - host: microservices.local
-#       paths:
-#         - path: /user
-#           service: user
-#         - path: /product
-#           service: product
-#         - path: /order
-#           service: order
-#         - path: /notification
-#           service: notification
-
-# env:
-#   tag: "{{ .Values.image.tag | default 'latest' }}"
-#   SECRET_KEY: "{{ .Values.secrets.SECRET_KEY }}"
-
-  
