@@ -41,6 +41,6 @@ postgres:
   password: "devpass"
   database: "devdb"
   storageSize: "1Gi"
-  storageClass: "gp2-csi "  # "gp2" for EKS, "standard" for GKE, or omit for default
+  storageClass: "gp2-csi"  # "gp2" for EKS, "standard" for GKE, or omit for default
 
 
