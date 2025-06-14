@@ -7,7 +7,7 @@ resource "aws_db_subnet_group" "postres_subnet_group" {
 resource "aws_db_instance" "postgres" {
   allocated_storage    = 20
   engine               = "postgres"
-  engine_version       = "17.2"
+  engine_version       = "17.4"
   instance_class       = "db.t3.micro"
   username             = var.db_user
   password             = var.db_password
