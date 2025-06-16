@@ -125,10 +125,11 @@ jobs:
         if: env.TARGET == 'eks'
         run: |
           IMAGE_REPO="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
-          echo "Deploying $HELM_RELEASE with image: $IMAGE_REPO:$IMAGE_TAG"         
+          echo "Deploying $HELM_RELEASE with image: $IMAGE_REPO:$IMAGE_TAG"
+          helm show values ./continuous-deployment/helm-charts/microservices
           helm upgrade --install "$HELM_RELEASE" \
             ./continuous-deployment/helm-charts/microservices \
-            --set database.secretName=rds-credentials \
+            --set database.secretName="rds-credentials" \
             --namespace "$HELM_NAMESPACE" \
             --create-namespace \
             --set image.repository="$IMAGE_REPO" \
