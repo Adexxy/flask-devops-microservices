@@ -15,7 +15,8 @@ spec:
     spec:
       containers:
         - name: {{ $.Chart.Name }}
-          image: "{{ $.Values.image.repository }}/{{ $name }}_service:{{ $.Values.image.tag | default $.Values.env.tag | default "latest" }}"
+          image: "{{ $.Values.image.repository }}/{{ $name }}_service:{{ $.Values.image.tag | default "latest" }}"
+          # image: "{{ $.Values.image.repository }}/{{ $name }}_service:{{ $.Values.image.tag | default $.Values.env.tag | default "latest" }}"
           envFrom:
             - secretRef:
                 name: {{ $.Values.database.secretName | default "rds-credentials" }}    #{{ .Values.database.secretName }}

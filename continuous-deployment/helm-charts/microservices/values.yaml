@@ -2,6 +2,11 @@ image:
   repository: your-docker-repo
   tag: latest
 
+env:
+  tag: latest
+  SECRET_KEY: "change-me"
+
+
 database:
   secretName: "rds-credentials" # Matches the Terraform-created secret
 
