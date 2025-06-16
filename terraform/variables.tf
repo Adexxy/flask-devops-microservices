@@ -159,3 +159,9 @@ variable "admin_principal_arns" {
   type        = list(string)
   default     = []
 }
+
+variable "namespace" {
+  description = "Kubernetes namespace for the application"
+  type        = string
+  default     = "default" # Default namespace
+}

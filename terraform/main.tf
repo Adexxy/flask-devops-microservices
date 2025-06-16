@@ -6,17 +6,17 @@ data "aws_caller_identity" "current" {}
 
 # Core Infrastructure
 module "vpc" {
-  source                = "./modules/vpc"
-  name                  = var.vpc_name
-  vpc_name              = var.vpc_name
-  aws_region            = var.aws_region
-  azs                   = var.azs
-  vpc_cidr              = var.vpc_cidr
-  public_subnets        = var.public_subnets
-  private_subnets       = var.private_subnets
-  public_subnets_cidr   = var.public_subnets_cidr
-  private_subnets_cidr  = var.private_subnets_cidr
-  environment           = var.environment
+  source               = "./modules/vpc"
+  name                 = var.vpc_name
+  vpc_name             = var.vpc_name
+  aws_region           = var.aws_region
+  azs                  = var.azs
+  vpc_cidr             = var.vpc_cidr
+  public_subnets       = var.public_subnets
+  private_subnets      = var.private_subnets
+  public_subnets_cidr  = var.public_subnets_cidr
+  private_subnets_cidr = var.private_subnets_cidr
+  environment          = var.environment
 }
 
 module "iam" {
@@ -49,17 +49,17 @@ module "eks" {
 }
 
 module "node_group" {
-  source            = "./modules/node_group"
-  cluster_name      = module.eks.cluster_name
-  cluster_arn       = module.eks.cluster_arn # Add this line
-  node_group_name   = "${var.environment}-node-group"
-  subnet_ids        = module.vpc.private_subnet_ids
-  node_role_arn     = module.iam.eks_node_group_role_arn
-  instance_types    = ["t3.medium"]
-  desired_capacity  = 2
-  min_size          = 1
-  max_size          = 3
-  environment       = var.environment
+  source           = "./modules/node_group"
+  cluster_name     = module.eks.cluster_name
+  cluster_arn      = module.eks.cluster_arn # Add this line
+  node_group_name  = "${var.environment}-node-group"
+  subnet_ids       = module.vpc.private_subnet_ids
+  node_role_arn    = module.iam.eks_node_group_role_arn
+  instance_types   = ["t3.medium"]
+  desired_capacity = 2
+  min_size         = 1
+  max_size         = 3
+  environment      = var.environment
 }
 
 # Database
@@ -84,7 +84,7 @@ module "ecr" {
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-  
+
   exec {
     api_version = "client.authentication.k8s.io/v1beta1"
     command     = "aws"
@@ -175,15 +175,15 @@ resource "helm_release" "nginx_ingress" {
 resource "kubernetes_secret" "rds_credentials" {
   metadata {
     name      = "rds-credentials"
-    namespace = "default" # Change to your namespace if different
+    namespace = var.namespace # Change to your namespace if different
   }
 
   data = {
     DATABASE_URL = "postgresql://${var.db_username}:${var.db_password}@${module.rds.endpoint}/${var.db_name}"
-    DB_HOST     = module.rds.endpoint
-    DB_USER     = var.db_username
-    DB_PASSWORD = var.db_password
-    DB_NAME     = var.db_name
+    DB_HOST      = module.rds.endpoint
+    DB_USER      = var.db_username
+    DB_PASSWORD  = var.db_password
+    DB_NAME      = var.db_name
   }
 
   depends_on = [module.rds]
