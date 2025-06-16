@@ -58,7 +58,7 @@ env:
 # ... (existing values remain the same)
 
 postgres:
-  enabled: true
+  enabled: false
   user: "devuser"
   password: "devpass"
   database: "devdb"

@@ -3,6 +3,11 @@ resource "aws_eks_cluster" "microservices_cluster" {
   role_arn = aws_iam_role.cluster.arn
   version  = "1.33"
 
+  # Add this access_config block
+  access_config {
+    authentication_mode = "API_AND_CONFIG_MAP"  # Required for access entries
+  }
+
   vpc_config {
     subnet_ids              = var.private_subnets
     endpoint_private_access = true
