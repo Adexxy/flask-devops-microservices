@@ -171,3 +171,21 @@ resource "helm_release" "nginx_ingress" {
     value = "internet-facing"
   }
 }
+
+resource "kubernetes_secret" "rds_credentials" {
+  metadata {
+    name      = "rds-credentials"
+    namespace = "default" # Change to your namespace if different
+  }
+
+  data = {
+    DATABASE_URL = "postgresql://${var.db_username}:${var.db_password}@${module.rds.endpoint}/${var.db_name}"
+    DB_HOST     = module.rds.endpoint
+    DB_USER     = var.db_username
+    DB_PASSWORD = var.db_password
+    DB_NAME     = var.db_name
+  }
+
+  depends_on = [module.rds]
+}
+

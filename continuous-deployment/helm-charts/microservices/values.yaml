@@ -2,6 +2,9 @@ image:
   repository: your-docker-repo
   tag: latest
 
+database:
+  secretName: "rds-credentials" # Matches the Terraform-created secret
+
 services:
   user:
     port: 5001

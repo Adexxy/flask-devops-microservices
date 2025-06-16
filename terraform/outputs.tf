@@ -9,6 +9,17 @@ output "rds_endpoint" {
   value = module.rds.endpoint
 }
 
+output "rds_connection_details" {
+  description = "RDS connection details for Kubernetes"
+  value = {
+    host     = module.rds.endpoint
+    username = var.db_username
+    password = var.db_password
+    database = var.db_name
+  }
+  sensitive = true
+}
+
 
 # VPC Outputs
 output "vpc_id" {
