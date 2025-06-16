@@ -31,3 +31,6 @@ ingress:
           service: order
         - path: /notification
           service: notification
+
+postgres:
+  enabled: false
