@@ -5,7 +5,7 @@ resource "aws_eks_cluster" "microservices_cluster" {
 
   # Add this access_config block
   access_config {
-    authentication_mode = "API_AND_CONFIG_MAP"  # Required for access entries
+    authentication_mode = "API"  # Required for access entries  API_AND_CONFIG_MAP
   }
 
   vpc_config {

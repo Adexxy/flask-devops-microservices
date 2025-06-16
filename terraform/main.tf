@@ -120,39 +120,39 @@ provider "helm" {
   }
 }
 
-# resource "kubernetes_config_map" "aws_auth" {
-#   depends_on = [
-#     module.eks,
-#     module.node_group,
-#     # aws_eks_access_policy_association.terraform_admin
-#   ]
+resource "kubernetes_config_map" "aws_auth" {
+  depends_on = [
+    module.eks,
+    module.node_group,
+    # aws_eks_access_policy_association.terraform_admin
+  ]
 
-#   metadata {
-#     name      = "aws-auth"
-#     namespace = "kube-system"
-#   }
+  metadata {
+    name      = "aws-auth"
+    namespace = "kube-system"
+  }
 
-#   data = {
-#     mapRoles = yamlencode([
-#       {
-#         rolearn  = module.iam.eks_node_group_role_arn
-#         username = "system:node:{{EC2PrivateDNSName}}"
-#         groups   = ["system:bootstrappers", "system:nodes"]
-#       }
-#     ])
-#     mapUsers = yamlencode(concat([
-#       {
-#         userarn  = data.aws_caller_identity.current.arn
-#         username = "admin-user"
-#         groups   = ["system:masters"]
-#       }
-#     ], var.map_users))
-#   }
-# }
+  data = {
+    mapRoles = yamlencode([
+      {
+        rolearn  = module.iam.eks_node_group_role_arn
+        username = "system:node:{{EC2PrivateDNSName}}"
+        groups   = ["system:bootstrappers", "system:nodes"]
+      }
+    ])
+    mapUsers = yamlencode(concat([
+      {
+        userarn  = data.aws_caller_identity.current.arn
+        username = "admin-user"
+        groups   = ["system:masters"]
+      }
+    ], var.map_users))
+  }
+}
 
 # Ingress Controller
 resource "helm_release" "nginx_ingress" {
-  # depends_on = [kubernetes_config_map.aws_auth]
+  depends_on = [kubernetes_config_map.aws_auth]
 
   name             = "ingress-nginx"
   repository       = "https://kubernetes.github.io/ingress-nginx"
