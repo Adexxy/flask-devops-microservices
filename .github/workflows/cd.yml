@@ -128,6 +128,7 @@ jobs:
           echo "Deploying $HELM_RELEASE with image: $IMAGE_REPO:$IMAGE_TAG"         
           helm upgrade --install "$HELM_RELEASE" \
             ./continuous-deployment/helm-charts/microservices \
+            --set database.secretName=rds-credentials \
             --namespace "$HELM_NAMESPACE" \
             --create-namespace \
             --set image.repository="$IMAGE_REPO" \
