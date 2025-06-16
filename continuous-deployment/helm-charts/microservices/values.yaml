@@ -7,8 +7,11 @@ env:
   SECRET_KEY: "change-me"
 
 
+namespace: flask-microservices  # Add this line
+
 database:
-  secretName: "rds-credentials" # Matches the Terraform-created secret
+  secretName: "rds-credentials"  # Matches the Terraform-created secret
+  secretNamespace: "flask-microservices"    
 
 services:
   user:

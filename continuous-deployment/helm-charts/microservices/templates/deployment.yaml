@@ -19,7 +19,7 @@ spec:
           # image: "{{ $.Values.image.repository }}/{{ $name }}_service:{{ $.Values.image.tag | default $.Values.env.tag | default "latest" }}"
           envFrom:
             - secretRef:
-                name: {{ $.Values.database.secretName | default "rds-credentials" }}    #{{ .Values.database.secretName }}
+                name: {{ .Values.database.secretName | default "rds-credentials" }}   #{{ .Values.database.secretName }}
           env:
             # - name: SQLALCHEMY_DATABASE_URI
             #   value: "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST)/$(DB_NAME)"

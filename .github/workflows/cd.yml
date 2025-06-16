@@ -147,14 +147,14 @@ jobs:
         if: env.TARGET == 'ecs'
         run: |
           IFS=',' read -ra SERVICES <<< "${{ secrets.ECS_SERVICE_NAMES }}"
-          for svc in "${SERVICES[@]}"; do
+          fordesired-count 1 \
+              --deployment-configuration maximumPercent=200,minimumHealthyPercent=100
+          done svc in "${SERVICES[@]}"; do
             aws ecs update-service \
               --cluster ${{ secrets.ECS_CLUSTER_NAME }} \
               --service "$svc" \
               --force-new-deployment \
-              --desired-count 1 \
-              --deployment-configuration maximumPercent=200,minimumHealthyPercent=100
-          done
+              --
 
       ########################################
       # Install NGINX Ingress Controller (if not exists)
