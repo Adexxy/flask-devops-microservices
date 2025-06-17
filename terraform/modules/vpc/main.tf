@@ -55,6 +55,10 @@ resource "aws_nat_gateway" "microservices_nat" {
   allocation_id = aws_eip.microservices_nat.id
   subnet_id = aws_subnet.public_subnets[0].id
 
+  lifecycle {
+    prevent_destroy = false
+  }
+
   tags = {
     Name = "${var.name}-nat-gateway"
     Environment = var.environment
@@ -86,6 +90,8 @@ resource "aws_route_table" "private" {
     Name = "${var.name}-private-rt"
     Environment = var.environment
   }
+
+  depends_on = [aws_internet_gateway.microservices]
 }
 
 resource "aws_route_table_association" "public" {
